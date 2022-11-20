@@ -48,6 +48,13 @@ class Likes(db.Model):
         unique=True
     )
 
+    @staticmethod
+    def add(userId, msgId):
+        like = Likes(user_id=userId,message_id=msgId)
+        db.session.add(like)
+        return like
+        
+
 
 class User(db.Model):
     """User in the system."""
@@ -168,6 +175,19 @@ class User(db.Model):
                 return user
 
         return False
+
+    @staticmethod
+    def edit_user(userId, form):
+        user = User.query.get(userId)
+        user.id = userId
+        user.username = form.username.data
+        user.email = form.email.data
+        user.image_url = form.image_url.data
+        user.header_image_url = form.header_image_url.data
+        user.bio = form.bio.data
+        user.location = form.location.data
+        db.session.commit()
+        return userId
 
 
 class Message(db.Model):

@@ -5,7 +5,7 @@ from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
 from forms import UserAddForm, LoginForm, MessageForm
-from models import db, connect_db, User, Message
+from models import db, connect_db, User, Message, Likes
 
 CURR_USER_KEY = "curr_user"
 
@@ -45,13 +45,12 @@ def do_login(user):
 
     session[CURR_USER_KEY] = user.id
 
-
+app.route('/logout')
 def do_logout():
     """Logout user."""
 
     if CURR_USER_KEY in session:
         del session[CURR_USER_KEY]
-
 
 @app.route('/signup', methods=["GET", "POST"])
 def signup():
@@ -112,8 +111,10 @@ def login():
 @app.route('/logout')
 def logout():
     """Handle logout of user."""
-
-    # IMPLEMENT THIS
+    user = User.query.get_or_404(session[CURR_USER_KEY])
+    do_logout()
+    flash(f"{user.username} logged out successfully!", 'success')
+    return redirect("/login")
 
 
 ##############################################################################
@@ -150,7 +151,8 @@ def users_show(user_id):
                 .order_by(Message.timestamp.desc())
                 .limit(100)
                 .all())
-    return render_template('users/show.html', user=user, messages=messages)
+    likes = [message.id for message in user.likes]
+    return render_template('users/show.html', user=user, messages=messages, likes=likes)
 
 
 @app.route('/users/<int:user_id>/following')
@@ -175,6 +177,17 @@ def users_followers(user_id):
 
     user = User.query.get_or_404(user_id)
     return render_template('users/followers.html', user=user)
+
+@app.route('/users/<int:user_id>/likes')
+def users_likes(user_id):
+    """Show user likes."""
+    
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    user = User.query.get_or_404(user_id)
+    return render_template('users/likes.html', user=user, likes=user.likes)
 
 
 @app.route('/users/follow/<int:follow_id>', methods=['POST'])
@@ -211,7 +224,27 @@ def stop_following(follow_id):
 def profile():
     """Update profile for current user."""
 
-    # IMPLEMENT THIS
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+    userId = session[CURR_USER_KEY]
+    user = User.query.get(userId)
+    form = UserAddForm(obj=user)
+    if form.validate_on_submit():
+        try:
+            if User.authenticate(user.username, form.password.data):
+                User.edit_user(userId, form)
+                return render_template('users/detail.html', user=user)
+            else:
+                flash("Invalid password", 'danger')
+                return render_template('users/edit.html', form=form)
+
+        except IntegrityError:
+            flash("Username already taken", 'danger')
+            return render_template('users/edit.html', form=form)
+
+    else:
+        return render_template("users/edit.html", form=form)
 
 
 @app.route('/users/delete', methods=["POST"])
@@ -228,6 +261,26 @@ def delete_user():
     db.session.commit()
 
     return redirect("/signup")
+
+@app.route('/users/add_like/<msgId>', methods=["POST"])
+def add_like(msgId):
+    """Allows user to like a message."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+    userId = session[CURR_USER_KEY]
+    like = Likes.query.filter(Likes.user_id == userId, Likes.message_id == msgId).first()
+    if like:
+        db.session.delete(like)
+        db.session.commit()
+        return redirect('/')
+    else: 
+        Likes.add(userId, msgId)
+        db.session.commit()
+        return redirect('/')
+
+
 
 
 ##############################################################################
@@ -292,13 +345,19 @@ def homepage():
     """
 
     if g.user:
+        following_ids = [f.id for f in g.user.following] + [g.user.id]
         messages = (Message
                     .query
+                    .filter(Message.user_id.in_(following_ids))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
 
-        return render_template('home.html', messages=messages)
+        userId = session[CURR_USER_KEY]
+        current_user = User.query.get_or_404(userId)
+        likes = [message.id for message in current_user.likes]
+
+        return render_template('home.html', messages=messages, likes=likes)
 
     else:
         return render_template('home-anon.html')
