@@ -56,3 +56,22 @@ class UserModelTestCase(TestCase):
         # User should have no messages & no followers
         self.assertEqual(len(u.messages), 0)
         self.assertEqual(len(u.followers), 0)
+
+    def test_signup(self):
+        user = User.signup("testuser", "123@email.com", "password", "image")
+        self.assertEqual(user.username,"testuser")
+        self.assertEqual(user.email,"123@email.com")
+        self.assertEqual(user.image_url,"image")
+
+    def test_authenticate(self):
+        u = User(
+            email="test@test.com",
+            username="testuser",
+            password="HASHED_PASSWORD"
+        )
+
+        db.session.add(u)
+        db.session.commit()
+        user = User.authenticate("testuser","HASHED_PASSWORD")
+
+        self.assertFalse(user)

@@ -74,7 +74,6 @@ def signup():
                 email=form.email.data,
                 image_url=form.image_url.data or User.image_url.default.arg,
             )
-            db.session.commit()
 
         except IntegrityError:
             flash("Username already taken", 'danger')

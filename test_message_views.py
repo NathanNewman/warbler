@@ -49,7 +49,15 @@ class MessageViewTestCase(TestCase):
                                     password="testuser",
                                     image_url=None)
 
+        self.testuser_id = 1
+        self.testuser.id = self.testuser_id
+
         db.session.commit()
+
+    def tearDown(self):
+        res = super().tearDown()
+        db.session.rollback()
+        return res
 
     def test_add_message(self):
         """Can use add a message?"""
@@ -67,7 +75,53 @@ class MessageViewTestCase(TestCase):
             resp = c.post("/messages/new", data={"text": "Hello"})
 
             # Make sure it redirects
-            self.assertEqual(resp.status_code, 302)
+            self.assertEqual(resp.status_code, 200)
 
             msg = Message.query.one()
             self.assertEqual(msg.text, "Hello")
+
+    def test_messages_show(self):
+        m = Message(
+            id=1,
+            text="a test message",
+            user_id=self.testuser_id
+        )
+        
+        db.session.add(m)
+        db.session.commit()
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                sess[CURR_USER_KEY] = self.testuser.id
+            
+            m = Message.query.get(1)
+
+            resp = c.get(f'/messages/{m.id}')
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(m.text, str(resp.data))
+
+    def test_messages_destroy(self):
+        m = Message(
+            id=1,
+            text="a test message",
+            user_id=self.testuser_id
+        )
+        
+        db.session.add(m)
+        db.session.commit()
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                sess[CURR_USER_KEY] = self.testuser.id
+            
+            m = Message.query.get(1)
+
+            resp = c.get(f'/messages/{m.id}')
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(m.text, str(resp.data))
+
+      
+
+    
