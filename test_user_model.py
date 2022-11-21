@@ -64,14 +64,19 @@ class UserModelTestCase(TestCase):
         self.assertEqual(user.image_url,"image")
 
     def test_authenticate(self):
-        u = User(
+        u = User.signup(
             email="test@test.com",
             username="testuser",
-            password="HASHED_PASSWORD"
+            password="HASHED_PASSWORD",
+            image_url=""
         )
 
         db.session.add(u)
         db.session.commit()
         user = User.authenticate("testuser","HASHED_PASSWORD")
+        wrong_user = User.authenticate("wronguser","HASHED_PASSWORD")
+        wrong_password = User.authenticate("testuser","WRONG_PASSWORD")
 
-        self.assertFalse(user)
+        self.assertTrue(user)
+        self.assertFalse(wrong_user)
+        self.assertFalse(wrong_password)
