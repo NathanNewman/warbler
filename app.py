@@ -3,6 +3,7 @@ import os
 from flask import Flask, render_template, request, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
+from random import randint
 
 from forms import UserAddForm, LoginForm, MessageForm
 from models import db, connect_db, User, Message, Likes
@@ -110,7 +111,7 @@ def login():
 @app.route('/logout')
 def logout():
     """Handle logout of user."""
-    user = User.query.get_or_404(session[CURR_USER_KEY])
+    user = g.user
     do_logout()
     flash(f"{user.username} logged out successfully!", 'success')
     return redirect("/login")
@@ -278,6 +279,26 @@ def add_like(msgId):
         Likes.add(userId, msgId)
         db.session.commit()
         return redirect('/')
+
+@app.route('/users/discover')
+def discover():
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+    userId = session[CURR_USER_KEY]
+    user = User.query.get_or_404(userId)
+    i = 0
+    all_users = User.query.all()
+    users = []
+    while i < 12:
+        num = len(all_users)
+        randnum = randint(0,num)
+        u = User.query.get(randnum)
+        if u not in users:
+            users.append(u)
+            i += 1
+    
+    return render_template('/users/discover.html', users=users, user=user)
 
 
 
