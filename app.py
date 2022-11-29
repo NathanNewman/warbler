@@ -287,16 +287,17 @@ def discover():
         return redirect("/")
     userId = session[CURR_USER_KEY]
     user = User.query.get_or_404(userId)
-    i = 0
-    all_users = User.query.all()
     users = []
-    while i < 12:
-        num = len(all_users)
-        randnum = randint(0,num)
-        u = User.query.get(randnum)
-        if u not in users:
-            users.append(u)
-            i += 1
+    while len(users) < 12:
+        try:
+            num_user = User.query.order_by(User.id.desc()).first()
+            num = num_user.id
+            randnum = randint(0,num)
+            u = User.query.get(randnum)
+            if u not in users:
+                users.append(u)
+        finally:
+            users = users
     
     return render_template('/users/discover.html', users=users, user=user)
 
