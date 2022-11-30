@@ -295,7 +295,7 @@ def discover():
             u = User.query.get(randnum)
             if u not in users:
                 users.append(u)
-        finally:
+        except:
             users = users
     
     return render_template('/users/discover.html', users=users, user=user)
