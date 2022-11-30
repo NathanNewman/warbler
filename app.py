@@ -285,8 +285,7 @@ def discover():
     if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
-    userId = session[CURR_USER_KEY]
-    user = User.query.get_or_404(userId)
+    user = g.user
     users = []
     while len(users) < 12:
         try:
